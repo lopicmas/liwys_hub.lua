@@ -1,0 +1,672 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Settings
+getgenv().PL_Settings = {
+    ESP_Enabled = true,
+    Aimbot_Enabled = false,
+    AimTargetPart = "Head",
+    ShowFOV = true,
+    FOV_Radius = 150,
+    Smoothness = 5,
+    Hitbox_Enabled = false,
+    Hitbox_Size = 5,
+    Hitbox_Transparency = 0.5,
+    DamageIndicator = true,
+    Stretched_Enabled = false,
+    InfiniteStamina = false,
+    Noclip_Enabled = false,
+    Fly_Enabled = false,
+    Fly_Speed = 50
+}
+
+-- Удаляем старое меню
+if CoreGui:FindFirstChild("LiwysHubGUI") then
+    CoreGui.LiwysHubGUI:Destroy()
+end
+
+-- Главный GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LiwysHubGUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- FOV Круг
+local FOVFrame = Instance.new("Frame")
+FOVFrame.Name = "FOVCircleGUI"
+FOVFrame.Size = UDim2.new(0, getgenv().PL_Settings.FOV_Radius * 2, 0, getgenv().PL_Settings.FOV_Radius * 2)
+FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVFrame.BackgroundTransparency = 1
+FOVFrame.Visible = false
+FOVFrame.ZIndex = 999
+FOVFrame.Parent = ScreenGui
+
+local UICornerFOV = Instance.new("UICorner")
+UICornerFOV.CornerRadius = UDim.new(1, 0)
+UICornerFOV.Parent = FOVFrame
+
+local UIStrokeFOV = Instance.new("UIStroke")
+UIStrokeFOV.Thickness = 2
+UIStrokeFOV.Color = Color3.fromRGB(255, 255, 255)
+UIStrokeFOV.Parent = FOVFrame
+
+-- Основное окно меню
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 520, 0, 440)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -220)
+MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+-- Шапка
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 8)
+TopCorner.Parent = TopBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Liwys HUB — Prison Life"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 16
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TopBar
+
+-- Маленькая кнопка открытия (скрыта по умолчанию)
+local OpenButton = Instance.new("TextButton")
+OpenButton.Size = UDim2.new(0, 40, 0, 40)
+OpenButton.Position = UDim2.new(0, 20, 0, 20)
+OpenButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+OpenButton.Text = "📂"
+OpenButton.TextSize = 18
+OpenButton.Visible = false
+OpenButton.Active = true
+OpenButton.Draggable = true
+OpenButton.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(0, 8)
+OpenCorner.Parent = OpenButton
+
+-- Кнопка закрытия (крестик) в углу шапки
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 40, 0, 40)
+CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = TopBar
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    OpenButton.Visible = true
+end)
+
+OpenButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    OpenButton.Visible = false
+end)
+
+-- Панель вкладок (Tabs)
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, -20, 0, 30)
+TabBar.Position = UDim2.new(0, 10, 0, 48)
+TabBar.BackgroundTransparency = 1
+TabBar.Parent = MainFrame
+
+local function createTabButton(name, posX, sizeX)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(sizeX, 0, 1, 0)
+    btn.Position = UDim2.new(posX, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(160, 160, 160)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = TabBar
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    return btn
+end
+
+local TabProfileBtn = createTabButton("Profile", 0, 0.23)
+local TabMainBtn    = createTabButton("Main / TP", 0.24, 0.23)
+local TabCombatBtn  = createTabButton("Combat", 0.48, 0.23)
+local TabGunsBtn    = createTabButton("Guns & Items", 0.72, 0.28)
+
+-- Контейнеры страниц
+local function createPage()
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, -20, 1, -90)
+    page.Position = UDim2.new(0, 10, 0, 85)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.CanvasSize = UDim2.new(0, 0, 2.5, 0)
+    page.ScrollBarThickness = 4
+    page.Visible = false
+    page.Parent = MainFrame
+    
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = page
+    return page
+end
+
+local PageProfile = createPage()
+local PageMain    = createPage()
+local PageCombat  = createPage()
+local PageGuns    = createPage()
+
+-- Показываем Profile по умолчанию
+PageProfile.Visible = true
+TabProfileBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+TabProfileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local tabs = {
+    {btn = TabProfileBtn, page = PageProfile},
+    {btn = TabMainBtn, page = PageMain},
+    {btn = TabCombatBtn, page = PageCombat},
+    {btn = TabGunsBtn, page = PageGuns}
+}
+
+for _, t in ipairs(tabs) do
+    t.btn.MouseButton1Click:Connect(function()
+        for _, other in ipairs(tabs) do
+            other.page.Visible = false
+            other.btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+            other.btn.TextColor3 = Color3.fromRGB(160, 160, 160)
+        end
+        t.page.Visible = true
+        t.btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        t.btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+end
+
+-- UI Компоненты
+local function createSectionHeader(parent, text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 25)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(255, 140, 50)
+    lbl.TextSize = 13
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = parent
+end
+
+local function createButton(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    btn.TextSize = 13
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    if callback then
+        btn.MouseButton1Click:Connect(callback)
+    end
+end
+
+local function createToggle(parent, text, default, callback)
+    local tgl = Instance.new("TextButton")
+    tgl.Size = UDim2.new(1, 0, 0, 32)
+    tgl.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    tgl.Text = "  " .. text
+    tgl.TextColor3 = Color3.fromRGB(220, 220, 220)
+    tgl.TextSize = 13
+    tgl.Font = Enum.Font.Gotham
+    tgl.TextXAlignment = Enum.TextXAlignment.Left
+    tgl.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = tgl
+    
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(0, 60, 1, 0)
+    status.Position = UDim2.new(1, -70, 0, 0)
+    status.BackgroundTransparency = 1
+    status.Text = default and "[ON]" or "[OFF]"
+    status.TextColor3 = default and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+    status.TextSize = 13
+    status.Font = Enum.Font.GothamBold
+    status.Parent = tgl
+    
+    local state = default
+    tgl.MouseButton1Click:Connect(function()
+        state = not state
+        status.Text = state and "[ON]" or "[OFF]"
+        status.TextColor3 = state and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+        callback(state)
+    end)
+end
+
+local function createInput(parent, placeholder, default, callback)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, 0, 0, 32)
+    box.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    box.PlaceholderText = placeholder
+    box.Text = tostring(default)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+    box.TextSize = 13
+    box.Font = Enum.Font.Gotham
+    box.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = box
+    
+    box.FocusLost:Connect(function()
+        callback(box.Text)
+    end)
+end
+
+-- НАПОЛНЕНИЕ ВКЛАДКИ 1: PROFILE
+createSectionHeader(PageProfile, "--- PLAYER PREVIEW ---")
+
+local ViewportFrame = Instance.new("ViewportFrame")
+ViewportFrame.Size = UDim2.new(1, 0, 0, 180)
+ViewportFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+ViewportFrame.BorderSizePixel = 0
+ViewportFrame.Parent = PageProfile
+
+local ViewportCorner = Instance.new("UICorner")
+ViewportCorner.CornerRadius = UDim.new(0, 6)
+ViewportCorner.Parent = ViewportFrame
+
+if LocalPlayer.Character then
+    LocalPlayer.Character.Archivable = true
+    local cloneChar = LocalPlayer.Character:Clone()
+    for _, obj in ipairs(cloneChar:GetDescendants()) do
+        if obj:IsA("Script") or obj:IsA("LocalScript") then
+            obj:Destroy()
+        end
+    end
+    
+    local vCamera = Instance.new("Camera")
+    ViewportFrame.CurrentCamera = vCamera
+    vCamera.Parent = ViewportFrame
+    
+    cloneChar.Parent = ViewportFrame
+    
+    local head = cloneChar:FindFirstChild("Head") or cloneChar:FindFirstChild("HumanoidRootPart")
+    if head then
+        vCamera.CFrame = CFrame.new(head.Position + Vector3.new(0, 0.5, 3.5), head.Position)
+    end
+end
+
+createSectionHeader(PageProfile, "--- PLAYER INFO ---")
+local currentTime = os.date("%H:%M:%S")
+createButton(PageProfile, "Привет, " .. LocalPlayer.Name .. "!")
+createButton(PageProfile, "Время запуска: " .. currentTime)
+createButton(PageProfile, "Ник: " .. LocalPlayer.Name)
+
+-- НАПОЛНЕНИЕ ВКЛАДКИ 2: MAIN / TELEPORTS / MOVEMENT
+createSectionHeader(PageMain, "--- MOVEMENT CHEATS ---")
+createToggle(PageMain, "Infinite Stamina (Беск. стамина)", false, function(v)
+    getgenv().PL_Settings.InfiniteStamina = v
+end)
+
+createToggle(PageMain, "Noclip (Сквозь стены)", false, function(v)
+    getgenv().PL_Settings.Noclip_Enabled = v
+end)
+
+createToggle(PageMain, "Fly (Полет)", false, function(v)
+    getgenv().PL_Settings.Fly_Enabled = v
+end)
+
+createSectionHeader(PageMain, "Fly Speed (Скорость полета):")
+createInput(PageMain, "Enter fly speed...", "50", function(text)
+    local num = tonumber(text)
+    if num then
+        getgenv().PL_Settings.Fly_Speed = num
+    end
+end)
+
+createSectionHeader(PageMain, "--- TELEPORTS ---")
+createButton(PageMain, "Teleport to Criminal Base", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-943.9, 94.1, 2054.9)
+    end
+end)
+createButton(PageMain, "Teleport to Prison (Yard)", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(793, 98, 2253)
+    end
+end)
+createButton(PageMain, "Teleport to Yard Tower", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(777, 125, 2459)
+    end
+end)
+createButton(PageMain, "Teleport to Gate Tower", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(480, 125, 2200)
+    end
+end)
+
+createSectionHeader(PageMain, "--- VISUALS & RESOLUTION ---")
+createToggle(PageMain, "Enable Team ESP", true, function(v)
+    getgenv().PL_Settings.ESP_Enabled = v
+end)
+createToggle(PageMain, "Stretched Resolution", false, function(v)
+    getgenv().PL_Settings.Stretched_Enabled = v
+end)
+
+-- НАПОЛНЕНИЕ ВКЛАДКИ 3: COMBAT
+createSectionHeader(PageCombat, "--- AIMBOT & FOV ---")
+createToggle(PageCombat, "Enable Aimbot (Hold RMB)", false, function(v)
+    getgenv().PL_Settings.Aimbot_Enabled = v
+end)
+createToggle(PageCombat, "Show FOV Circle", true, function(v)
+    getgenv().PL_Settings.ShowFOV = v
+end)
+
+createSectionHeader(PageCombat, "Aim Target Part:")
+createInput(PageCombat, "Enter part name...", "Head", function(text)
+    getgenv().PL_Settings.AimTargetPart = text
+end)
+
+createSectionHeader(PageCombat, "FOV Radius Size:")
+createInput(PageCombat, "Enter FOV radius...", "150", function(text)
+    local num = tonumber(text)
+    if num then 
+        getgenv().PL_Settings.FOV_Radius = num 
+        FOVFrame.Size = UDim2.new(0, num * 2, 0, num * 2)
+    end
+end)
+
+createSectionHeader(PageCombat, "--- HITBOXES & DAMAGE ---")
+createToggle(PageCombat, "Enable Hitbox Extender", false, function(v)
+    getgenv().PL_Settings.Hitbox_Enabled = v
+end)
+
+createSectionHeader(PageCombat, "Hitbox Size (Размер):")
+createInput(PageCombat, "Enter hitbox size...", "5", function(text)
+    local num = tonumber(text)
+    if num then
+        getgenv().PL_Settings.Hitbox_Size = num
+    end
+end)
+
+createToggle(PageCombat, "Damage Indicator", true, function(v)
+    getgenv().PL_Settings.DamageIndicator = v
+end)
+
+-- НАПОЛНЕНИЕ ВКЛАДКИ 4: GUNS & ITEMS
+local function giveItem(itemName)
+    local itemGiver = Workspace:FindFirstChild("Prison_ITEMS") and Workspace.Prison_ITEMS:FindFirstChild("giver") and Workspace.Prison_ITEMS.giver:FindFirstChild(itemName)
+    if itemGiver then
+        local pickupPart = itemGiver:FindFirstChild("ITEMPICKUP") or itemGiver:FindFirstChild("ITEM") or itemGiver:FindFirstChildWhichIsA("BasePart")
+        local itemHandler = ReplicatedStorage:FindFirstChild("ItemHandler")
+        if pickupPart and itemHandler then
+            itemHandler:InvokeServer(pickupPart)
+        end
+    end
+end
+
+createSectionHeader(PageGuns, "--- SPECIAL ITEMS ---")
+createButton(PageGuns, "Get Police Card (Карта полиции)", function()
+    giveItem("Card")
+end)
+
+createSectionHeader(PageGuns, "--- GIVE WEAPONS (FREE) ---")
+local gunsList = {"M9", "Remington 870", "AK-47"}
+for _, gunName in ipairs(gunsList) do
+    createButton(PageGuns, "Get " .. gunName, function()
+        giveItem(gunName)
+    end)
+end
+
+-- ЛОГИКА ФУНКЦИЙ СКРИПТА
+RunService.RenderStepped:Connect(function()
+    if getgenv().PL_Settings.ShowFOV then
+        FOVFrame.Visible = true
+        local viewportSize = Camera.ViewportSize
+        FOVFrame.Position = UDim2.new(0, viewportSize.X / 2, 0, viewportSize.Y / 2)
+    else
+        FOVFrame.Visible = false
+    end
+end)
+
+-- Логика бесконечной стамины (в Prison Life стамина сбрасывается через локальные скрипты или падение значения)
+RunService.Stepped:Connect(function()
+    if getgenv().PL_Settings.InfiniteStamina then
+        local char = LocalPlayer.Character
+        if char then
+            local rushed = char:FindFirstChild("client") or char:FindFirstChild("stamina")
+            -- Защита от трат стамины, если у игрока есть стандартные скрипты бега
+            pcall(function()
+                LocalPlayer.PlayerGui.Home. Stamina.Value = 100
+            end)
+        end
+    end
+end)
+
+-- Логика Noclip
+RunService.Stepped:Connect(function()
+    if getgenv().PL_Settings.Noclip_Enabled then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Логика Fly (Полет)
+local flyConnection
+flyConnection = RunService.RenderStepped:Connect(function()
+    if getgenv().PL_Settings.Fly_Enabled then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local camCFrame = Camera.CFrame
+            local moveDir = Vector3.new()
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCFrame.RightVector end
+            
+            hrp.Velocity = moveDir * getgenv().PL_Settings.Fly_Speed
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + camCFrame.LookVector)
+        end
+    end
+end)
+
+local function getPlayerColor(player)
+    local team = player.Team and player.Team.Name or ""
+    if team == "Guards" then return Color3.fromRGB(50, 120, 255)
+    else return Color3.fromRGB(255, 40, 40) end
+end
+
+local function isEnemy(player)
+    if player == LocalPlayer then return false end
+    local myTeam = LocalPlayer.Team and LocalPlayer.Team.Name or ""
+    local targetTeam = player.Team and player.Team.Name or ""
+    if myTeam == "Guards" then return targetTeam == "Inmates" or targetTeam == "Criminals"
+    elseif myTeam == "Inmates" then return targetTeam == "Guards" or targetTeam == "Criminals"
+    elseif myTeam == "Criminals" then return targetTeam == "Guards" or targetTeam == "Inmates" end
+    return false
+end
+
+-- ESP
+local espHighlights = {}
+RunService.RenderStepped:Connect(function()
+    if not getgenv().PL_Settings.ESP_Enabled then
+        for _, hl in pairs(espHighlights) do hl:Destroy() end
+        espHighlights = {}
+        return
+    end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if isEnemy(player) then
+            if player.Character and not espHighlights[player] then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "Liwys_ESP"
+                highlight.Adornee = player.Character
+                highlight.FillColor = getPlayerColor(player)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.4
+                highlight.Parent = player.Character
+                espHighlights[player] = highlight
+            elseif player.Character and espHighlights[player] then
+                espHighlights[player].FillColor = getPlayerColor(player)
+            elseif not player.Character and espHighlights[player] then
+                espHighlights[player]:Destroy()
+                espHighlights[player] = nil
+            end
+        else
+            if espHighlights[player] then
+                espHighlights[player]:Destroy()
+                espHighlights[player] = nil
+            end
+        end
+    end
+end)
+
+-- Хитбоксы
+RunService.RenderStepped:Connect(function()
+    if not getgenv().PL_Settings.Hitbox_Enabled then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if isEnemy(player) and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local s = getgenv().PL_Settings.Hitbox_Size
+                hrp.Size = Vector3.new(s, s, s)
+                hrp.Transparency = getgenv().PL_Settings.Hitbox_Transparency
+                hrp.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Растяг
+RunService.RenderStepped:Connect(function()
+    if getgenv().PL_Settings.Stretched_Enabled then Camera.FieldOfView = 90
+    else Camera.FieldOfView = 70 end
+end)
+
+-- Индикатор урона
+local function showDamage(targetPart, damageAmount)
+    if not getgenv().PL_Settings.DamageIndicator or not targetPart then return end
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 60, 0, 40)
+    billboard.StudsOffset = Vector3.new(math.random(-1, 1), 3, math.random(-1, 1))
+    billboard.Adornee = targetPart
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "-" .. tostring(damageAmount)
+    textLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+    textLabel.TextSize = 20
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0
+    textLabel.Parent = billboard
+    
+    billboard.Parent = targetPart
+    game:GetService("Debris"):AddItem(billboard, 0.7)
+end
+
+local function hookPlayerHealth(player)
+    if player == LocalPlayer then return end
+    local function setupCharacter(char)
+        local humanoid = char:WaitForChild("Humanoid", 5)
+        if humanoid then
+            local lastHealth = humanoid.Health
+            humanoid.HealthChanged:Connect(function(newHealth)
+                if newHealth < lastHealth and isEnemy(player) then
+                    local damage = math.floor(lastHealth - newHealth)
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp and damage > 0 then showDamage(hrp, damage) end
+                end
+                lastHealth = newHealth
+            end)
+        end
+    end
+    if player.Character then setupCharacter(player.Character) end
+    player.CharacterAdded:Connect(setupCharacter)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do hookPlayerHealth(p) end
+Players.PlayerAdded:Connect(hookPlayerHealth)
+
+-- Аимбот
+local isHoldingRMB = false
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then isHoldingRMB = true end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then isHoldingRMB = false end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if getgenv().PL_Settings.Aimbot_Enabled and isHoldingRMB then
+        local closestTarget = nil
+        local shortestDist = getgenv().PL_Settings.FOV_Radius
+        local viewportCenter = Camera.ViewportSize / 2
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if isEnemy(player) and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+                local partName = getgenv().PL_Settings.AimTargetPart
+                local targetPart = player.Character:FindFirstChild(partName)
+                if targetPart then
+                    local screenPoint, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(screenPoint.X, screenPoint.Y) - viewportCenter).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            closestTarget = targetPart
+                        end
+                    end
+                end
+            end
+        end
+        
+        if closestTarget then
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 / getgenv().PL_Settings.Smoothness)
+        end
+    end
+end)
+
+print("Liwys HUB Loaded Successfully with Movement Cheats!")
